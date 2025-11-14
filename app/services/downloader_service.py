@@ -6,18 +6,19 @@ from datetime import datetime
 
 class YouTubeAudioDownloader:
     """
-    Ultra-stable YouTube audio downloader using yt-dlp (subprocess).
+    Stable YouTube audio downloader using yt-dlp (subprocess).
+    Stores audio in C:/MentorBoxData always.
     """
 
-    def __init__(self, base_data_dir: str = "rag_video_chat/data"):
+    def __init__(self, base_data_dir: str = r"C:\Users\Dell\Desktop\hackRx-1\MentorBox.ai\rag_video_chat\data"):
         self.base_dir = Path(base_data_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[DEBUG] Base data directory: {self.base_dir}")
 
     def extract_video_id(self, url: str) -> str:
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(url)
 
-        # youtu.be/<id>
         if parsed.hostname == "youtu.be":
             return parsed.path.lstrip("/")
 
@@ -29,36 +30,40 @@ class YouTubeAudioDownloader:
 
     def download_audio(self, url: str) -> dict:
         video_id = self.extract_video_id(url)
+
         video_dir = self.base_dir / video_id
         video_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[DEBUG] Video directory: {video_dir}")
 
-        output_template = f"{video_dir}/{video_id}.%(ext)s"
+        output_template = str(video_dir / f"{video_id}.%(ext)s")
+        print(f"[DEBUG] Output template: {output_template}")
 
-        # Run yt-dlp using subprocess — this is 100% reliable
         cmd = [
             "yt-dlp",
             "-f", "bestaudio",
             "-o", output_template,
-            url
+            url,
         ]
 
-        process = subprocess.run(cmd, capture_output=True, text=True)
+        print("[DEBUG] Running yt-dlp...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"[DEBUG] Return code: {result.returncode}")
+        print(f"[DEBUG] STDOUT:\n{result.stdout}")
+        print(f"[DEBUG] STDERR:\n{result.stderr}")
 
-        if process.returncode != 0:
-            raise RuntimeError(
-                f"yt-dlp failed:\n{process.stderr}"
-            )
+        if result.returncode != 0:
+            raise RuntimeError(f"yt-dlp failed:\n{result.stderr}")
 
-        # Find downloaded file
         audio_file = None
-        for ext in ["m4a", "webm", "opus", "mp3"]:
-            p = video_dir / f"{video_id}.{ext}"
-            if p.exists():
-                audio_file = str(p)
+        for ext in ["webm", "m4a", "opus", "mp3"]:
+            fpath = video_dir / f"{video_id}.{ext}"
+            print(f"[DEBUG] Checking: {fpath}")
+            if fpath.exists():
+                audio_file = str(fpath)
                 break
 
         if not audio_file:
-            raise RuntimeError("Audio file not found after yt-dlp download.")
+            raise RuntimeError("Audio file not found after yt-dlp execution.")
 
         metadata = {
             "video_id": video_id,

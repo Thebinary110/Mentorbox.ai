@@ -212,3 +212,4 @@ outputs/
 *.webm
 *.mp4
 *.wav
+/data
